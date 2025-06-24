@@ -1,6 +1,9 @@
 import os
-# Disable CUDA kernels for macOS compatibility
-os.environ['TIREX_NO_CUDA'] = '1'
+import platform
+
+# Only disable CUDA kernels on macOS/non-Windows systems
+if platform.system() != 'Windows':
+    os.environ['TIREX_NO_CUDA'] = '1'
 
 import torch
 import torch.nn as nn
@@ -172,13 +175,19 @@ class TiRexFineTuner(nn.Module):
         else:
             context_squeezed = context
         
-        # Move context to CPU for TiRex (it runs on CPU with CUDA disabled)
-        context_cpu = context_squeezed.cpu()
+        # Handle device placement for TiRex model
+        if platform.system() == 'Windows':
+            # On Windows with CUDA, TiRex can run on GPU
+            tirex_device = 'cuda' if torch.cuda.is_available() else 'cpu'
+            context_for_tirex = context_squeezed.to(tirex_device)
+        else:
+            # On macOS, keep TiRex on CPU
+            context_for_tirex = context_squeezed.cpu()
         
         # Generate forecast using TiRex (always in inference mode since gradients don't flow)
         with torch.no_grad():
             forecast_result = self.tirex_model.forecast(
-                context=context_cpu,
+                context=context_for_tirex,
                 prediction_length=prediction_length
             )
         
@@ -390,13 +399,22 @@ def create_model(
             device = "cpu"
     
     # Move adaptation layers and loss functions to target device
-    # Keep TiRex model on CPU due to CUDA kernel compatibility issues
     if hasattr(model, 'adaptation_layers'):
         model.adaptation_layers = model.adaptation_layers.to(device)
     
     model.pinball_loss.quantiles = model.pinball_loss.quantiles.to(device)
     model.crps_metric.quantiles = model.crps_metric.quantiles.to(device)
-    logger.info(f"Adaptation layers and loss functions moved to device: {device}, TiRex model kept on CPU")
+    
+    # On Windows with CUDA, we can also move TiRex to GPU for better performance
+    if platform.system() == 'Windows' and device == 'cuda':
+        try:
+            model.tirex_model = model.tirex_model.to(device)
+            logger.info(f"All components moved to device: {device} (including TiRex model)")
+        except Exception as e:
+            logger.warning(f"Could not move TiRex to GPU: {e}, keeping on CPU")
+            logger.info(f"Adaptation layers and loss functions moved to device: {device}, TiRex model kept on CPU")
+    else:
+        logger.info(f"Adaptation layers and loss functions moved to device: {device}, TiRex model kept on CPU")
     
     return model
 

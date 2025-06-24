@@ -1,9 +1,9 @@
-# TiRex Fine-tuning Configuration
+# TiRex Fine-tuning Configuration - Optimized for RTX 4070 Super on Windows 11
 
 # Data configuration
 data:
-  train_path: "/Users/felixtriendl/PycharmProjects/FineTuneTirex/bitcoin_2022_2024_5min.csv"
-  val_path: "/Users/felixtriendl/PycharmProjects/FineTuneTirex/bitcoin_2025_5min.csv"
+  train_path: "bitcoin_2022_2024_5min.csv"  # Windows relative path
+  val_path: "bitcoin_2025_5min.csv"         # Windows relative path
   context_length: 2016  # 7 days of 5-min bars (7 * 24 * 60 / 5 = 2016), divisible by 32
   prediction_lengths: [72, 144, 288]  # 6h, 12h, 24h forecasts in 5-min intervals
 
@@ -13,29 +13,31 @@ model:
   quantiles: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]  # Pinball quantiles
   freeze_encoder: false  # Whether to freeze encoder weights during fine-tuning
 
-# Training configuration
+# Training configuration - Optimized for RTX 4070 Super
 training:
-  epochs: 2
-  batch_size: 4
-  val_batch_size: 1
+  epochs: 10  # Increased for GPU training
+  batch_size: 32  # Larger batch size for GPU (12GB VRAM)
+  val_batch_size: 8  # Larger validation batch size
   learning_rate: 1.0e-4
   weight_decay: 1.0e-2
   min_lr: 1.0e-5
   warmup_ratio: 0.05  # 5% of total steps for linear warmup
   grad_clip: 1.0  # Gradient clipping value (0 to disable)
-  patience: 2  # Early stopping patience
+  patience: 3  # Increased patience for longer training
   min_delta: 0.0001  # Minimum improvement for early stopping
   seed: 42
-  device: "auto"  # "auto", "cpu", "mps", "cuda"
+  device: "cuda"  # Force CUDA for RTX 4070 Super
   save_dir: "checkpoints"
 
 # Logging configuration
 logging:
   level: "INFO"
   save_metrics: true
-  log_interval: 10  # Log every N batches during training
+  log_interval: 100  # Log every 100 batches (more frequent for faster training)
 
-# Environment settings
+# Environment settings - Optimized for Windows + CUDA
 environment:
-  disable_cuda_kernels: true  # Set TIREX_NO_CUDA=1 for macOS compatibility
-  num_workers: 0  # DataLoader workers (0 for macOS compatibility)
+  disable_cuda_kernels: false  # Enable CUDA kernels for RTX 4070 Super
+  num_workers: 4  # Use multiple CPU cores for data loading on Windows
+  pin_memory: true  # Pin memory for faster GPU transfers
+  persistent_workers: true  # Keep workers alive between epochs

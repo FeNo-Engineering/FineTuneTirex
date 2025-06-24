@@ -1,5 +1,9 @@
 import os
-os.environ['TIREX_NO_CUDA'] = '1'
+import platform
+
+# Only disable CUDA kernels on macOS/non-Windows systems
+if platform.system() != 'Windows':
+    os.environ['TIREX_NO_CUDA'] = '1'
 
 import torch
 import torch.nn as nn

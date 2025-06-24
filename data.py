@@ -255,21 +255,35 @@ def create_data_loaders(
         normalize_stats=(train_dataset.mean, train_dataset.std)
     )
     
-    # Create data loaders
+    # Create data loaders with platform-specific optimizations
+    import platform
+    
+    # Optimize DataLoader settings based on platform
+    if platform.system() == 'Windows':
+        num_workers = 4  # Use multiple workers on Windows
+        pin_memory = True
+        persistent_workers = True
+    else:
+        num_workers = 0  # Single process for macOS compatibility
+        pin_memory = False  # Disable pin_memory on macOS MPS
+        persistent_workers = False
+    
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
         batch_size=batch_size,
         shuffle=True,
-        num_workers=0,  # Single process for macOS compatibility
-        pin_memory=True
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+        persistent_workers=persistent_workers if num_workers > 0 else False
     )
     
     val_loader = torch.utils.data.DataLoader(
         val_dataset,
         batch_size=val_batch_size,
         shuffle=False,
-        num_workers=0,
-        pin_memory=True
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+        persistent_workers=persistent_workers if num_workers > 0 else False
     )
     
     # Return metadata
