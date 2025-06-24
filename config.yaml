@@ -1,0 +1,41 @@
+# TiRex Fine-tuning Configuration
+
+# Data configuration
+data:
+  train_path: "/Users/felixtriendl/PycharmProjects/FineTuneTirex/bitcoin_2022_2024_5min.csv"
+  val_path: "/Users/felixtriendl/PycharmProjects/FineTuneTirex/bitcoin_2025_5min.csv"
+  context_length: 2016  # 7 days of 5-min bars (7 * 24 * 60 / 5 = 2016), divisible by 32
+  prediction_lengths: [72, 144, 288]  # 6h, 12h, 24h forecasts in 5-min intervals
+
+# Model configuration
+model:
+  name: "NX-AI/TiRex"
+  quantiles: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]  # Pinball quantiles
+  freeze_encoder: false  # Whether to freeze encoder weights during fine-tuning
+
+# Training configuration
+training:
+  epochs: 2
+  batch_size: 4
+  val_batch_size: 1
+  learning_rate: 1.0e-4
+  weight_decay: 1.0e-2
+  min_lr: 1.0e-5
+  warmup_ratio: 0.05  # 5% of total steps for linear warmup
+  grad_clip: 1.0  # Gradient clipping value (0 to disable)
+  patience: 2  # Early stopping patience
+  min_delta: 0.0001  # Minimum improvement for early stopping
+  seed: 42
+  device: "auto"  # "auto", "cpu", "mps", "cuda"
+  save_dir: "checkpoints"
+
+# Logging configuration
+logging:
+  level: "INFO"
+  save_metrics: true
+  log_interval: 10  # Log every N batches during training
+
+# Environment settings
+environment:
+  disable_cuda_kernels: true  # Set TIREX_NO_CUDA=1 for macOS compatibility
+  num_workers: 0  # DataLoader workers (0 for macOS compatibility)
